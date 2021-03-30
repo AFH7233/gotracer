@@ -31,7 +31,7 @@ func main() {
 	lookAt := camera.GetLookAt(utils.NewVector(0.0, 5.0, 20.0))
 	d := camera.GetDistanceFromScreen(aspect)
 
-	sphere := utils.NewSphere(utils.NewVector(0.0, 7.5, 10.0), 2.0)
+	sphere := utils.NewSphere(utils.NewVector(0.0, 7.5, -10.0), 2.0)
 	objects := []utils.Object3D{&sphere}
 	fmt.Println(lookAt)
 	for _, object := range objects {
@@ -48,7 +48,7 @@ func main() {
 			x := (2.0 * (float64(i) + randX) / float64(height)) - aspect
 			y := -((2.0 * (float64(j) + randY) / float64(height)) - 1.0)
 			origin := utils.NewVector(0.0, 0.0, 0.0)
-			direction := utils.NewNormal(x, y, d)
+			direction := utils.NewNormal(x, y, -d)
 			ray := utils.NewRay(origin, direction)
 			pixelColor = renderColor(objects, ray)
 			img.Set(i, j, utils.Vector2Color(pixelColor))

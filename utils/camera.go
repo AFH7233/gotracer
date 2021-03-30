@@ -50,7 +50,7 @@ func (camera Camera) GetLookAt(target Vector) Transformation {
 	}
 	fmt.Println(translacion)
 
-	lookAt := translacion.Combine(ejes)
+	lookAt := ejes.Combine(translacion)
 	fmt.Println(lookAt)
 
 	return lookAt
