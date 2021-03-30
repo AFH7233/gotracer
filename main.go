@@ -9,7 +9,7 @@ import (
 	"github.com/AFH7233/gotracer/utils"
 )
 
-var RAYS_PER_PIXEL = 10
+var RAYS_PER_PIXEL = 100
 
 func main() {
 	width := 640
@@ -39,17 +39,21 @@ func main() {
 
 	for i := 0; i < width; i++ {
 		for j := 0; j < height; j++ {
-			pixelColor := utils.NewVector(0.0, 0.0, 0.0)
-			r1 := 2.0 * (random.Float64())
-			r2 := 2.0 * (random.Float64())
-			randX := randomizeRay(r1)
-			randY := randomizeRay(r2)
-			x := (2.0 * (float64(i) + randX) / float64(height)) - aspect
-			y := -((2.0 * (float64(j) + randY) / float64(height)) - 1.0)
-			origin := utils.NewVector(0.0, 0.0, 0.0)
-			direction := utils.NewNormal(x, y, -d)
-			ray := utils.NewRay(origin, direction)
-			pixelColor = renderColor(objects, ray)
+			accumulatorColor := utils.NewVector(0.0, 0.0, 0.0)
+			for k := 0; k < RAYS_PER_PIXEL ; k++ {
+				r1 := 2.0 * (random.Float64())
+				r2 := 2.0 * (random.Float64())
+				randX := randomizeRay(r1)
+				randY := randomizeRay(r2)
+				x := (2.0 * (float64(i) + randX) / float64(height)) - aspect
+				y := -((2.0 * (float64(j) + randY) / float64(height)) - 1.0)
+				origin := utils.NewVector(0.0, 0.0, 0.0)
+				direction := utils.NewNormal(x, y, -d)
+				ray := utils.NewRay(origin, direction)
+				rayColor := renderColor(objects, ray)
+				accumulatorColor = accumulatorColor.Add(rayColor)
+			}
+			pixelColor := accumulatorColor.Scale(1.0/float64(RAYS_PER_PIXEL))
 			img.Set(i, j, utils.Vector2Color(pixelColor))
 		}
 	}
