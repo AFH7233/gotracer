@@ -2,7 +2,6 @@ package utils
 
 import (
 	"math"
-	"fmt"
 )
 
 type Camera struct {
@@ -23,16 +22,12 @@ func (camera Camera) GetLookAt(target Vector) Transformation {
 	forward := camera.origin.Sub(target)
 	forward.q = 0.0
 	forward = forward.Normalize()
-	fmt.Println(forward)
 
 	side := camera.up.Cross(forward)
 	side = side.Normalize()
-	fmt.Println(side)
 
 	up := forward.Cross(side)
 	up = up.Normalize()
-	fmt.Println(up)
-
 
 	ejes := Transformation{
 		{side.x, side.y, side.z, side.q},
@@ -40,7 +35,6 @@ func (camera Camera) GetLookAt(target Vector) Transformation {
 		{forward.x, forward.y, forward.z, forward.q},
 		{0.0, 0.0, 0.0, 1.0},
 	}
-	fmt.Println(ejes)
 
 	translacion := Transformation{
 		{1.0, 0.0, 0.0, -camera.origin.x},
@@ -48,10 +42,8 @@ func (camera Camera) GetLookAt(target Vector) Transformation {
 		{0.0, 0.0, 1.0, -camera.origin.z},
 		{0.0, 0.0, 0.0, 1.0},
 	}
-	fmt.Println(translacion)
 
 	lookAt := ejes.Combine(translacion)
-	fmt.Println(lookAt)
 
 	return lookAt
 }

@@ -6,7 +6,6 @@ import (
 	"math"
 	"math/rand"
 	"os"
-	"fmt"
 	"github.com/AFH7233/gotracer/utils"
 )
 
@@ -33,11 +32,11 @@ func main() {
 
 	sphere := utils.NewSphere(utils.NewVector(0.0, 7.5, -10.0), 2.0)
 	objects := []utils.Object3D{&sphere}
-	fmt.Println(lookAt)
+
 	for _, object := range objects {
 		object.Transform(lookAt)
 	}
-	fmt.Println(sphere)
+
 	for i := 0; i < width; i++ {
 		for j := 0; j < height; j++ {
 			pixelColor := utils.NewVector(0.0, 0.0, 0.0)
