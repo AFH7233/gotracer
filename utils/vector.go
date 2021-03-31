@@ -5,35 +5,11 @@ import (
 	"math"
 )
 
-const ERROR = 0.00001
-
 type Vector struct {
 	x float64
 	y float64
 	z float64
 	q float64
-}
-
-type Ray struct {
-	origin    Vector
-	direction Vector
-}
-
-type Transformation [4][4]float64
-
-func NewRay(origin, direction Vector) Ray {
-	origin.q = 1.0
-	direction.q = 0.0
-	ray := Ray{origin, direction.Normalize()}
-	return ray
-}
-
-func (r Ray) GetOrigin() Vector {
-	return r.origin
-}
-
-func (r Ray) GetDirection() Vector {
-	return r.direction
 }
 
 func NewVector(x, y, z float64) (result Vector) {
@@ -85,7 +61,7 @@ func (a Vector) Multiply(b Vector) (result Vector) {
 	result.x = a.x * b.x
 	result.y = a.y * b.y
 	result.z = a.z * b.z
-	result.q = a.q
+	result.q = a.q * b.q
 	return
 }
 
@@ -123,23 +99,6 @@ func (a Vector) Transform(transformMatrix Transformation) (result Vector) {
 	result.z = transformMatrix[2][0]*a.x + transformMatrix[2][1]*a.y + transformMatrix[2][2]*a.z + transformMatrix[2][3]*a.q
 	result.q = transformMatrix[3][0]*a.x + transformMatrix[3][1]*a.y + transformMatrix[3][2]*a.z + transformMatrix[3][3]*a.q
 	return
-}
-
-func (a Transformation) Combine(b Transformation) (result Transformation) {
-	for i := 0; i < 4; i++ {
-		for j := 0; j < 4; j++ {
-			for k := 0; k < 4; k++ {
-				result[i][j] += a[i][k] * b[k][j]
-			}
-		}
-	}
-	return
-}
-
-func (ray Ray) GetRayPoint(distance float64) Vector {
-	scaledVector := ray.direction.Scale(distance)
-	result := ray.origin.Add(scaledVector)
-	return result
 }
 
 func Vector2Color(a Vector) color.RGBA {

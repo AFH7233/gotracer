@@ -23,11 +23,9 @@ func (camera Camera) GetLookAt(target Vector) Transformation {
 	forward.q = 0.0
 	forward = forward.Normalize()
 
-	side := camera.up.Cross(forward)
-	side = side.Normalize()
+	side := camera.up.Cross(forward).Normalize()
 
-	up := forward.Cross(side)
-	up = up.Normalize()
+	up := forward.Cross(side).Normalize()
 
 	ejes := Transformation{
 		{side.x, side.y, side.z, side.q},

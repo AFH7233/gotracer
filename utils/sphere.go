@@ -13,7 +13,7 @@ func NewSphere(origin Vector, radius float64) (sphere Sphere) {
 	return
 }
 
-func (sphere Sphere) Intersect(ray Ray) (result Ray, distance float64, isHitted bool) {
+func (sphere *Sphere) Intersect(ray Ray) (result Ray, distance float64, isHitted bool) {
 	raySphere := ray.origin.Sub(sphere.origin)
 	b := ray.direction.Dot(raySphere)
 	discriminante := b*b - (raySphere.Dot(raySphere) - sphere.radius*sphere.radius)
