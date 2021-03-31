@@ -8,7 +8,6 @@ import (
 	"math"
 	"math/rand"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/AFH7233/gotracer/utils"
@@ -35,6 +34,7 @@ func main() {
 		utils.NewVector(0.0, 5.0, -40.0),
 		45.0,
 	)
+
 	lookAt := camera.GetLookAt(utils.NewVector(0.0, 5.0, 20.0))
 	d := camera.GetDistanceFromScreen(aspect)
 
@@ -57,12 +57,9 @@ func main() {
 		object.Geometry.Transform(lookAt)
 	}
 
-	/*var wg sync.WaitGroup
-	buffer := make(chan utils.Vector, runtime.NumCPU())*/
 	for i := 0; i < width; i++ {
 		for j := 0; j < height; j++ {
 			accumulatorColor := utils.NewVector(0.0, 0.0, 0.0)
-			//activeThreads := 0
 			for k := 0; k < RAYS_PER_PIXEL; k++ {
 				r1 := 2.0 * (random.Float64())
 				r2 := 2.0 * (random.Float64())
@@ -73,20 +70,6 @@ func main() {
 				origin := utils.NewVector(0.0, 0.0, 0.0)
 				direction := utils.NewNormal(x, y, -d)
 				ray := utils.NewRay(origin, direction)
-
-				/*wg.Add(1)
-				go renderColorTread(buffer, &wg, visibleObjects, ray)
-				activeThreads = activeThreads + 1
-				if !(activeThreads < runtime.NumCPU()) || k == RAYS_PER_PIXEL-1 {
-					wg.Wait()
-					close(buffer)
-
-					for rayColor := range buffer {
-						accumulatorColor = accumulatorColor.Add(rayColor)
-					}
-					buffer = make(chan utils.Vector, runtime.NumCPU())
-					activeThreads = 0
-				}*/
 				rayColor := renderColor(visibleObjects, ray, 0, 1, 1)
 				accumulatorColor = accumulatorColor.Add(rayColor)
 			}
@@ -100,12 +83,6 @@ func main() {
 	png.Encode(f, img)
 	duration := time.Since(start)
 	fmt.Println(duration)
-}
-
-func renderColorTread(result chan utils.Vector, wg *sync.WaitGroup, visibleObjects []utils.VisibleObject, ray utils.Ray) {
-	defer wg.Done()
-	rayColor := renderColor(visibleObjects, ray, 0, 1, 1)
-	result <- rayColor
 }
 
 func renderColor(objects []utils.VisibleObject, ray utils.Ray, bounces int, nc float64, nco float64) utils.Vector {
