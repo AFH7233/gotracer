@@ -8,6 +8,7 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"runtime"
 	"sync"
 	"time"
 
@@ -57,12 +58,12 @@ func main() {
 		object.Geometry.Transform(lookAt)
 	}
 
-	/*var wg sync.WaitGroup
-	buffer := make(chan utils.Vector, runtime.NumCPU())*/
+	var wg sync.WaitGroup
+	buffer := make(chan utils.Vector, runtime.NumCPU())
 	for i := 0; i < width; i++ {
 		for j := 0; j < height; j++ {
 			accumulatorColor := utils.NewVector(0.0, 0.0, 0.0)
-			//activeThreads := 0
+			activeThreads := 0
 			for k := 0; k < RAYS_PER_PIXEL; k++ {
 				r1 := 2.0 * (random.Float64())
 				r2 := 2.0 * (random.Float64())
@@ -74,7 +75,7 @@ func main() {
 				direction := utils.NewNormal(x, y, -d)
 				ray := utils.NewRay(origin, direction)
 
-				/*wg.Add(1)
+				wg.Add(1)
 				go renderColorTread(buffer, &wg, visibleObjects, ray)
 				activeThreads = activeThreads + 1
 				if !(activeThreads < runtime.NumCPU()) || k == RAYS_PER_PIXEL-1 {
@@ -86,9 +87,7 @@ func main() {
 					}
 					buffer = make(chan utils.Vector, runtime.NumCPU())
 					activeThreads = 0
-				}*/
-				rayColor := renderColor(visibleObjects, ray, 0, 1, 1)
-				accumulatorColor = accumulatorColor.Add(rayColor)
+				}
 			}
 
 			pixelColor := accumulatorColor.Scale(1.0 / float64(RAYS_PER_PIXEL))
