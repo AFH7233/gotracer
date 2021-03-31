@@ -8,6 +8,8 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"sync"
+	"time"
 
 	"github.com/AFH7233/gotracer/utils"
 )
@@ -17,6 +19,7 @@ var BOUNCES = 5
 
 func main() {
 	fmt.Println("Starting render")
+	start := time.Now()
 	width := 640
 	height := 480
 	random := rand.New(rand.NewSource(99))
@@ -35,14 +38,14 @@ func main() {
 	lookAt := camera.GetLookAt(utils.NewVector(0.0, 5.0, 20.0))
 	d := camera.GetDistanceFromScreen(aspect)
 
-	world := utils.NewSphere(utils.NewVector(0.0, -50.0, -10.0), 50.0)
-	worldMaterial := utils.Material{Color: color.RGBA{100, 100, 100, 255}, Emitance: utils.NewNormal(0.0, 0.0, 0.0), PScatter: 1.0}
+	world := utils.NewSphere(utils.NewVector(0.0, 5.5, 10.0), 10.0)
+	worldMaterial := utils.Material{Color: color.RGBA{255, 100, 100, 255}, Emitance: utils.NewNormal(0.0, 0.0, 0.0), PScatter: 1.0, Nt: 0.0001, ProbReflected: 0.0}
 
 	sphere := utils.NewSphere(utils.NewVector(0.0, 5.5, -10.0), 4.0)
-	simpleMaterial := utils.Material{Color: color.RGBA{0, 255, 0, 255}, Emitance: utils.NewNormal(0.0, 0.0, 0.0), PScatter: 0.6}
+	simpleMaterial := utils.Material{Color: color.RGBA{255, 255, 255, 255}, Emitance: utils.NewNormal(0.0, 0.0, 0.0), PScatter: 0.6, Nt: 2.3, ProbReflected: 0.01}
 
 	light := utils.NewSphere(utils.NewVector(10.0, 30, -10.0), 5.0)
-	brightMaterial := utils.Material{Color: color.RGBA{255, 255, 255, 255}, Emitance: utils.NewNormal(10.0, 10.0, 10.0), PScatter: 0.5}
+	brightMaterial := utils.Material{Color: color.RGBA{255, 255, 255, 255}, Emitance: utils.NewNormal(10.0, 10.0, 10.0), PScatter: 0.5, Nt: 0.0001, ProbReflected: 0.0}
 
 	visibleObjects := []utils.VisibleObject{
 		{Geometry: &sphere, Material: simpleMaterial},
@@ -54,9 +57,12 @@ func main() {
 		object.Geometry.Transform(lookAt)
 	}
 
+	/*var wg sync.WaitGroup
+	buffer := make(chan utils.Vector, runtime.NumCPU())*/
 	for i := 0; i < width; i++ {
 		for j := 0; j < height; j++ {
 			accumulatorColor := utils.NewVector(0.0, 0.0, 0.0)
+			//activeThreads := 0
 			for k := 0; k < RAYS_PER_PIXEL; k++ {
 				r1 := 2.0 * (random.Float64())
 				r2 := 2.0 * (random.Float64())
@@ -67,9 +73,24 @@ func main() {
 				origin := utils.NewVector(0.0, 0.0, 0.0)
 				direction := utils.NewNormal(x, y, -d)
 				ray := utils.NewRay(origin, direction)
-				rayColor := renderColor(visibleObjects, ray, 0)
+
+				/*wg.Add(1)
+				go renderColorTread(buffer, &wg, visibleObjects, ray)
+				activeThreads = activeThreads + 1
+				if !(activeThreads < runtime.NumCPU()) || k == RAYS_PER_PIXEL-1 {
+					wg.Wait()
+					close(buffer)
+
+					for rayColor := range buffer {
+						accumulatorColor = accumulatorColor.Add(rayColor)
+					}
+					buffer = make(chan utils.Vector, runtime.NumCPU())
+					activeThreads = 0
+				}*/
+				rayColor := renderColor(visibleObjects, ray, 0, 1, 1)
 				accumulatorColor = accumulatorColor.Add(rayColor)
 			}
+
 			pixelColor := accumulatorColor.Scale(1.0 / float64(RAYS_PER_PIXEL))
 			img.Set(i, j, utils.Vector2Color(pixelColor))
 		}
@@ -77,9 +98,17 @@ func main() {
 
 	f, _ := os.Create("image.png")
 	png.Encode(f, img)
+	duration := time.Since(start)
+	fmt.Println(duration)
 }
 
-func renderColor(objects []utils.VisibleObject, ray utils.Ray, bounces int) utils.Vector {
+func renderColorTread(result chan utils.Vector, wg *sync.WaitGroup, visibleObjects []utils.VisibleObject, ray utils.Ray) {
+	defer wg.Done()
+	rayColor := renderColor(visibleObjects, ray, 0, 1, 1)
+	result <- rayColor
+}
+
+func renderColor(objects []utils.VisibleObject, ray utils.Ray, bounces int, nc float64, nco float64) utils.Vector {
 	minDistance := math.Inf(1)
 	hittedObject := -1
 	var distance float64 = 0.0
@@ -104,12 +133,12 @@ func renderColor(objects []utils.VisibleObject, ray utils.Ray, bounces int) util
 		normalDirection := ray.GetDirection().Dot(surfaceNormal)
 
 		var correctedNormal utils.Vector
-		//var isInside bool
+		var isInside bool
 		if normalDirection < 0.0 {
-			//isInside = true
+			isInside = true
 			correctedNormal = surfaceNormal
 		} else {
-			//isInside = false
+			isInside = false
 			correctedNormal = resultRay.GetDirection()
 		}
 
@@ -118,15 +147,59 @@ func renderColor(objects []utils.VisibleObject, ray utils.Ray, bounces int) util
 		diffuseRay := ray.DiffuseReflection(surfaceRay).GetDirection()
 		pScatter := objects[hittedObject].Material.PScatter
 		pSpecular := 1.0 - pScatter
-		reflectedVector := specularRay.Scale(pSpecular).Add(diffuseRay.Scale(pScatter)).Normalize()
-		reflectedRay := utils.NewRay(resultRay.GetOrigin(), reflectedVector)
+		var reflectedVector utils.Vector
+
+		nt := objects[hittedObject].Material.Nt
+
+		var nnt float64
+		if isInside {
+			nnt = nt / nco
+		} else {
+			nnt = nc / nt
+		}
+
+		ddn := ray.GetDirection().Dot(correctedNormal)
+		cos2t := 1 - (nnt * nnt * (1 - (ddn * ddn)))
+
+		enteredObject := false
+		if cos2t < 0.0 {
+			reflectedVector = specularRay.Scale(pSpecular).Add(diffuseRay.Scale(pScatter)).Normalize()
+		} else {
+			factor := ddn * nnt * math.Sqrt(cos2t)
+			if !isInside {
+				factor = factor * -1
+			}
+
+			refractedRay := ray.GetDirection().Scale(nnt).Sub(surfaceNormal.Scale(factor)).Normalize()
+			probReflected := rand.Float64()
+			if probReflected < objects[hittedObject].Material.ProbReflected {
+				reflectedVector = specularRay.Scale(pSpecular).Add(diffuseRay.Scale(pScatter)).Normalize()
+			} else {
+				enteredObject = true
+				reflectedVector = refractedRay
+			}
+		}
 
 		if bounces > BOUNCES {
 			return objectEmitance
 		}
-
+		reflectedRay := utils.NewRay(resultRay.GetOrigin(), reflectedVector)
 		bounces += 1
-		recursionColor := renderColor(objects, reflectedRay, bounces)
+		var recursionColor utils.Vector
+		if isInside {
+			if enteredObject {
+				recursionColor = renderColor(objects, reflectedRay, bounces, nco, nc)
+			} else {
+				recursionColor = renderColor(objects, reflectedRay, bounces, nt, nco)
+			}
+		} else {
+			if enteredObject {
+				recursionColor = renderColor(objects, reflectedRay, bounces, nt, nc)
+			} else {
+				recursionColor = renderColor(objects, reflectedRay, bounces, nc, nco)
+			}
+		}
+
 		return recursionColor.Multiply(objectColor).Add(objectEmitance)
 	}
 	return utils.NewNormal(0.01, 0.05, 0.08)

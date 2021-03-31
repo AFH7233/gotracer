@@ -5,7 +5,9 @@ import (
 )
 
 type Material struct {
-	Color    color.RGBA
-	Emitance Vector
-	PScatter float64
+	Color         color.RGBA
+	Emitance      Vector
+	PScatter      float64
+	Nt            float64
+	ProbReflected float64
 }
