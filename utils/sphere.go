@@ -35,6 +35,7 @@ func (sphere *Sphere) Intersect(ray Ray) (result Ray, distance float64, isHitted
 		point := ray.GetRayPoint(distance)
 		result.origin = point
 		result.direction = point.Sub(sphere.origin).Normalize()
+		result.direction.q = 0.0
 		return
 	}
 }

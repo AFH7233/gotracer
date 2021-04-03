@@ -38,6 +38,7 @@ func (ray Ray) SpecularReflection(normal Ray) (result Ray) {
 
 	result.direction = resultDirection
 	result.origin = normal.origin
+	result.direction.q = 0.0
 	return
 }
 
@@ -63,5 +64,6 @@ func (ray Ray) DiffuseReflection(normal Ray) (result Ray) {
 
 	result.direction = ru.Add(rv).Add(rw).Normalize()
 	result.origin = normal.origin
+	result.direction.q = 0.0
 	return
 }

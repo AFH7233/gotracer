@@ -19,7 +19,7 @@ func NewCamera(up Vector, origin Vector, fov float64) (camera Camera) {
 }
 
 func (camera Camera) GetLookAt(target Vector) Transformation {
-	forward := camera.origin.Sub(target)
+	forward := target.Sub(camera.origin)
 	forward.q = 0.0
 	forward = forward.Normalize()
 

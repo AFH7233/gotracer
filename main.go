@@ -13,7 +13,7 @@ import (
 	"github.com/AFH7233/gotracer/utils"
 )
 
-var RAYS_PER_PIXEL = 100
+var RAYS_PER_PIXEL = 5000
 var BOUNCES = 5
 
 func main() {
@@ -38,11 +38,11 @@ func main() {
 	lookAt := camera.GetLookAt(utils.NewVector(0.0, 5.0, 20.0))
 	d := camera.GetDistanceFromScreen(aspect)
 
-	world := utils.NewSphere(utils.NewVector(0.0, 5.5, 10.0), 10.0)
+	world := utils.NewSphere(utils.NewVector(0.0, -20.0, -10.0), 20.0)
 	worldMaterial := utils.Material{Color: color.RGBA{255, 100, 100, 255}, Emitance: utils.NewNormal(0.0, 0.0, 0.0), PScatter: 1.0, Nt: 0.0001, ProbReflected: 0.0}
 
 	sphere := utils.NewSphere(utils.NewVector(0.0, 5.5, -10.0), 4.0)
-	simpleMaterial := utils.Material{Color: color.RGBA{255, 255, 255, 255}, Emitance: utils.NewNormal(0.0, 0.0, 0.0), PScatter: 0.6, Nt: 2.3, ProbReflected: 0.01}
+	simpleMaterial := utils.Material{Color: color.RGBA{255, 255, 255, 255}, Emitance: utils.NewNormal(0.0, 0.0, 0.0), PScatter: 0.1, Nt: 1.5, ProbReflected: 0.0}
 
 	light := utils.NewSphere(utils.NewVector(10.0, 30, -10.0), 5.0)
 	brightMaterial := utils.Material{Color: color.RGBA{255, 255, 255, 255}, Emitance: utils.NewNormal(10.0, 10.0, 10.0), PScatter: 0.5, Nt: 0.0001, ProbReflected: 0.0}
@@ -57,6 +57,7 @@ func main() {
 		object.Geometry.Transform(lookAt)
 	}
 
+	nc := []float64{1.0}
 	for i := 0; i < width; i++ {
 		for j := 0; j < height; j++ {
 			accumulatorColor := utils.NewVector(0.0, 0.0, 0.0)
@@ -68,9 +69,9 @@ func main() {
 				x := (2.0 * (float64(i) + randX) / float64(height)) - aspect
 				y := -((2.0 * (float64(j) + randY) / float64(height)) - 1.0)
 				origin := utils.NewVector(0.0, 0.0, 0.0)
-				direction := utils.NewNormal(x, y, -d)
+				direction := utils.NewNormal(-x, y, d)
 				ray := utils.NewRay(origin, direction)
-				rayColor := renderColor(visibleObjects, ray, 0, 1, 1)
+				rayColor := renderColor(visibleObjects, ray, 0, nc)
 				accumulatorColor = accumulatorColor.Add(rayColor)
 			}
 
@@ -85,7 +86,7 @@ func main() {
 	fmt.Println(duration)
 }
 
-func renderColor(objects []utils.VisibleObject, ray utils.Ray, bounces int, nc float64, nco float64) utils.Vector {
+func renderColor(objects []utils.VisibleObject, ray utils.Ray, bounces int, nco []float64) utils.Vector {
 	minDistance := math.Inf(1)
 	hittedObject := -1
 	var distance float64 = 0.0
@@ -130,11 +131,12 @@ func renderColor(objects []utils.VisibleObject, ray utils.Ray, bounces int, nc f
 
 		var nnt float64
 		if isInside {
-			nnt = nt / nco
+			nc := nco[len(nco)-2]
+			nnt = nt / nc
 		} else {
+			nc := nco[len(nco)-1]
 			nnt = nc / nt
 		}
-
 		ddn := ray.GetDirection().Dot(correctedNormal)
 		cos2t := 1 - (nnt * nnt * (1 - (ddn * ddn)))
 
@@ -142,14 +144,9 @@ func renderColor(objects []utils.VisibleObject, ray utils.Ray, bounces int, nc f
 		if cos2t < 0.0 {
 			reflectedVector = specularRay.Scale(pSpecular).Add(diffuseRay.Scale(pScatter)).Normalize()
 		} else {
-			factor := ddn * nnt * math.Sqrt(cos2t)
-			if !isInside {
-				factor = factor * -1
-			}
-
-			refractedRay := ray.GetDirection().Scale(nnt).Sub(surfaceNormal.Scale(factor)).Normalize()
+			refractedRay := ray.GetDirection().Sub(correctedNormal.Scale(ddn)).Scale(nnt).Sub(correctedNormal.Scale(math.Sqrt(cos2t)))
 			probReflected := rand.Float64()
-			if probReflected < objects[hittedObject].Material.ProbReflected {
+			if probReflected < objects[hittedObject].Material.ProbReflected && !isInside {
 				reflectedVector = specularRay.Scale(pSpecular).Add(diffuseRay.Scale(pScatter)).Normalize()
 			} else {
 				enteredObject = true
@@ -165,18 +162,14 @@ func renderColor(objects []utils.VisibleObject, ray utils.Ray, bounces int, nc f
 		var recursionColor utils.Vector
 		if isInside {
 			if enteredObject {
-				recursionColor = renderColor(objects, reflectedRay, bounces, nco, nc)
-			} else {
-				recursionColor = renderColor(objects, reflectedRay, bounces, nt, nco)
+				nco = nco[:len(nco)-1]
 			}
 		} else {
 			if enteredObject {
-				recursionColor = renderColor(objects, reflectedRay, bounces, nt, nc)
-			} else {
-				recursionColor = renderColor(objects, reflectedRay, bounces, nc, nco)
+				nco = append(nco, nt)
 			}
 		}
-
+		recursionColor = renderColor(objects, reflectedRay, bounces, nco)
 		return recursionColor.Multiply(objectColor).Add(objectEmitance)
 	}
 	return utils.NewNormal(0.01, 0.05, 0.08)
